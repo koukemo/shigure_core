@@ -6,6 +6,7 @@ import cv2
 import message_filters
 import numpy as np
 import rclpy
+from rclpy.time import Time
 from rclpy.qos import QoSProfile, ReliabilityPolicy
 from sensor_msgs.msg import CompressedImage, CameraInfo
 from shigure_core_msgs.msg import PoseKeyPointsList, TrackedObjectList, ContactedList, Contacted
@@ -61,6 +62,9 @@ class ContactDetectionNode(ImagePreviewNode):
             qos_profile=shigure_qos
         )
 
+        # self.object_cache = message_filters.Cache(object_subscriber, 200)
+        # self.color_cache = message_filters.Cache(color_subscriber, 200)
+
         self.time_synchronizer = message_filters.TimeSynchronizer(
             [object_subscriber, people_subscriber, color_subscriber, depth_camera_info_subscriber], 1500)
         self.time_synchronizer.registerCallback(self.callback)
@@ -83,6 +87,32 @@ class ContactDetectionNode(ImagePreviewNode):
 
         result_list, is_not_touch = self.contact_detection_logic.execute(object_list, people)
 
+        # test_msgs = self.object_cache.getInterval(self.object_cache.getOldestTime(), self.object_cache.getLastestTime())
+
+        # # print(str(self.object_cache.getInterval(self.object_cache.getOldestTime(), self.object_cache.getLastestTime())) + "\n")
+        # print("now : " + str(people.header.stamp))
+        # print("getOldestTime : " + str(self.object_cache.getOldestTime()))
+        # print("getLatestTime : " + str(self.object_cache.getLastestTime()))
+        # for test_msg in test_msgs:
+        #     if len(test_msg.tracked_object_list) != 0:
+        #         if test_msg.tracked_object_list[0].action != "stay":
+        #             test_stamp = Time.from_msg(test_msg.header.stamp)
+        #             if self.color_cache.getElemBeforeTime(test_stamp) != None:
+        #                 print("BEFORE::" + str(self.color_cache.getElemBeforeTime(test_stamp).header.stamp))
+        #                 be_file_path = "/home/maeda/ros2_ws/debug_test/be_debug.png"
+        #                 be_debug_img: np.ndarray = self.bridge.compressed_imgmsg_to_cv2(self.color_cache.getElemBeforeTime(test_stamp))
+        #                 cv2.imwrite(be_file_path, be_debug_img)
+        #             if self.color_cache.getElemAfterTime(test_stamp) != None:
+        #                 print("AFTER::" + str(self.color_cache.getElemAfterTime(test_stamp).header.stamp))
+        #                 af_file_path = "/home/maeda/ros2_ws/debug_test/af_debug.png"
+        #                 af_debug_img: np.ndarray = self.bridge.compressed_imgmsg_to_cv2(self.color_cache.getElemAfterTime(test_stamp))
+        #                 cv2.imwrite(af_file_path, af_debug_img)
+        #             # print(self.color_cache.getElemBeforeTime(test_stamp))
+        #             # print(self.color_cache.getElemAfterTime(test_stamp))
+        #             print(str(test_msg.header.stamp) + " : " + str(test_msg.tracked_object_list[0].action) + "\n")
+            
+        #         #print(str(test_msg.header.stamp) + " : " + "no_action" + "\n")
+
         publish_msg = ContactedList()
         publish_msg.header.stamp = people.header.stamp
         publish_msg.header.frame_id = camera_info.header.frame_id
@@ -93,6 +123,10 @@ class ContactDetectionNode(ImagePreviewNode):
             action = ContactActionEnum.from_tracked_object_action_enum(
                 TrackedObjectActionEnum.value_of(tracked_object.action)
             )
+
+            # print("-----------------------------")
+            # print(str(publish_msg.header.stamp) + " : " + str(action.value))
+            # print("-----------------------------")
 
             if action != ContactActionEnum.TOUCH:
                 contacted = Contacted()
